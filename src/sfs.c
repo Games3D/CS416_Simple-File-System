@@ -868,9 +868,10 @@ int sfs_mkdir(const char *path, mode_t mode)
     int retstat = 0;
     log_msg("\nsfs_mkdir(path=\"%s\", mode=0%3o)\n",
       path, mode);
+	  
     int i = get_inode_from_path(path);
-    if(i==-1){  
-      log_msg("\nCreating DIR with path: %s\n", path);
+    if(i == -1)
+	{  
       struct inode_ *tmp = malloc(sizeof(struct inode_));
       tmp->id = find_empty_inode_bit();
       tmp->size = 0;
@@ -883,15 +884,13 @@ int sfs_mkdir(const char *path, mode_t mode)
       memcpy(tmp->path, path,64);
       tmp->created = time(NULL);
       memcpy(&inodes_table.table[tmp->id], tmp, sizeof(struct inode_));
-      set_inode_bit(tmp->id, 1);
-      log_msg("Inode for path %s is created: index=%d\n", inodes_table.table[tmp->id].path,inodes_table.table[tmp->id].id);            
+      set_inode_bit(tmp->id, 1);            
       write_inode_to_disk(tmp->id);
       free(tmp);
       write_i_bitmap_to_disk();
 
     }else{
       retstat = -EEXIST;
-      log_msg("\nDIR with path %s is found in inode %d\n", path, i);
     }
 
     
@@ -953,17 +952,13 @@ int sfs_opendir(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     log_msg("\nsfs_opendir(path=\"%s\", fi=0x%08x)\n",
     path, fi);
+	
     int i = get_inode_from_path(path);
-    if(i != -1)
+    if(i == -1)
     {
-      log_msg("Found inode(index: %d) for dir with path: %s\nlooking for file descriptor now\n", i, path);
-      
-    }else{
-      log_msg("File not find: %s", path);
-      return -ENOENT;
+        return -ENOENT;
     }
-
-    
+	
     return retstat;
 }
 
