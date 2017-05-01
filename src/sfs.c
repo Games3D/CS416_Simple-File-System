@@ -128,14 +128,6 @@ void write_i_bitmap_to_disk()
     log_msg("Failed to write the updated bitmap to diskfile\n");
 }
 
-void write_dt_bitmap_to_disk()
-{
-  if(block_write(2, &block_bm)>0)
-    log_msg("Updated block bitmap is written to the diskfile\n");
-  else
-    log_msg("Failed to write the updated bitmap to diskfile\n");
-}
-
 int write_inode_to_disk(int index)
 {
   int rtn = -1;
@@ -554,7 +546,7 @@ int sfs_unlink(const char *path)
 	  
       write_inode_to_disk(ptr->id);
       write_i_bitmap_to_disk();
-      write_dt_bitmap_to_disk();
+      block_write(2, &block_bm);
     }
 
     return retstat;
@@ -729,7 +721,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
 			{
               ptr->size = size;
               ptr->modified = time(NULL);
-              write_dt_bitmap_to_disk();
+              block_write(2, &block_bm);
               write_inode_to_disk(ptr->id);
               retstat = size;
               write_inode_to_disk(ptr->id);
@@ -931,7 +923,7 @@ int sfs_rmdir(const char *path)
       log_msg("Inode %d delete complete!\n\n",ptr->id);
       write_inode_to_disk(ptr->id);
       write_i_bitmap_to_disk();
-      write_dt_bitmap_to_disk();
+      block_write(2, &block_bm);
     }else{
       return -ENOENT;
     }
