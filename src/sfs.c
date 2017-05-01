@@ -32,12 +32,6 @@
 
 /*  some helper functions */
 
-void set_nth_bit(unsigned char *bitmap, int idx)
-{   
-	bitmap[idx / 8] |= 1 << (idx % 8);
-}
-
-
 void clear_nth_bit(unsigned char *bitmap, int idx)
 {   
     bitmap[idx / 8] &= ~(1 << (idx % 8));
@@ -82,7 +76,7 @@ void set_inode_bit(int index, int bit)
   }
   if(bit == 1)
   {
-	  set_nth_bit(inodes_bm.bitmap, index);
+	  inodes_bm.bitmap[index / 8] |= 1 << (index % 8);
   }
   else
   {
@@ -98,7 +92,7 @@ void set_block_bit(int index, int bit)
   }
   if(bit == 1)
   {
-	set_nth_bit(block_bm.bitmap, index);
+	block_bm.bitmap[index / 8] |= 1 << (index % 8);
   }
   else
   {
