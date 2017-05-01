@@ -341,14 +341,11 @@ void *sfs_init(struct fuse_conn_info *conn)
 
       set_inode_bit(0,1); // set the bit map for root
 
-      if (block_write(0, &supablock) > 0)
-        log_msg("\nInit(): Super Block is written in the file\n");
+      block_write(0, &supablock) > 0;
 
-      if(block_write(1, &inodes_bm)>0)
-        log_msg("\nInit(): inode bitmap is written in the file\n");
+      block_write(1, &inodes_bm) > 0;
 
-      if(block_write(2, &block_bm)>0)
-        log_msg("\nInit(): block bitmap is written in the file\n");
+      block_write(2, &block_bm) > 0;
 
       int i = 0, j = 0;
       uint8_t *buffer = malloc(BLOCK_SIZE);
@@ -381,17 +378,18 @@ void *sfs_init(struct fuse_conn_info *conn)
       
       uint8_t *buffer = malloc(BLOCK_SIZE*sizeof(uint8_t));
 
-      if(block_read(1, buffer) > 0){
+      if(block_read(1, buffer) > 0)
+	  {
         memcpy(&inodes_bm,buffer, sizeof(struct i_bitmap));
         memset(buffer,0,BLOCK_SIZE);
-           }
+      }
 
       if(block_read(2, buffer)>0){
         memcpy(&block_bm, buffer, sizeof(struct block_bitmap));
         memset(buffer, 0, BLOCK_SIZE);
        }
 
-      //load all the inodes..
+      //load all the inodes
       int i;
       int k = 0;
       for(i = 0; i< 64; i++)
@@ -428,7 +426,7 @@ void *sfs_init(struct fuse_conn_info *conn)
 void sfs_destroy(void *userdata)
 {
     disk_close();
-    log_msg("\ndisk file closed\n");
+    
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
 
@@ -459,11 +457,11 @@ int sfs_getattr(const char *path, struct stat *statbuf)
       statbuf->st_ctime = tmp->created;
       statbuf->st_size = tmp->size;
       statbuf->st_blocks = tmp->blocks;
-    }else{
-      log_msg("\n\nInode not found for path: %s\n\n", path);
+    }
+	else
+	{
       retstat = -ENOENT;
     }
-    log_stat(statbuf);
 
     return retstat;
 }
@@ -489,7 +487,6 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int i = get_inode_from_path(path);
     if(i == -1)
     {
-      log_msg("\nCreating file with path: %s\n", path);
       struct inode_ *tmp = malloc(sizeof(struct inode_));
       tmp->id = find_empty_inode_bit();
       tmp->size = 0;
@@ -503,14 +500,12 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       if(S_ISDIR(mode)) {
         tmp->type = TYPE_DIRECTORY;
       }
-      //tmp->created = time(NULL);
 
       memcpy(&inodes_table.table[tmp->id], tmp, sizeof(struct inode_));
       struct inode_ *in = &inodes_table.table[tmp->id];
       set_inode_bit(tmp->id, 1);
-      log_msg("Inode for path %s is created: index=%d\n", inodes_table.table[tmp->id].path,inodes_table.table[tmp->id].id);
       free(tmp);
-      log_msg("Writing the inode to diskfile now: \n"); 
+       
     
       write_i_bitmap_to_disk();
       uint8_t *buf = malloc(BLOCK_SIZE*sizeof(uint8_t));
@@ -518,17 +513,20 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       {
         int offset = (in->id%(BLOCK_SIZE/sizeof(struct inode_)))*sizeof(struct inode_);
         memcpy(buf+offset, in, sizeof(struct inode_));
-        if(block_write(3+((in->id)/2), buf)>0){
+        if(block_write(3+((in->id)/2), buf)>0)
+		{
           fi->fh = 0;
-          log_msg("Inode id: %d path %s is written in block %d\n\n", in->id, in->path, 3+in->id/2);
-        }else 
-          retstat = -EFAULT;
+        }
+		else 
+		{
+			retstat = -EFAULT;
+		}
       }
       free(buf);
 
-    }else{
+    }else
+	{
       retstat = -EEXIST;
-      log_msg("\nFile with path %s is found in inode %d\n", path, i);
     }
     
     return retstat;
@@ -539,20 +537,21 @@ int sfs_unlink(const char *path)
 {
     int retstat = 0;
     log_msg("\n\nsfs_unlink(path=\"%s\")\n", path);
+	
     int i = get_inode_from_path(path);
     if(i!=-1)
     {
       struct inode_ *ptr = &inodes_table.table[i];
-      log_msg("Deleting inode %d: \n", ptr->id);
       set_inode_bit(ptr->id, 0);
       memset(ptr->path, 0, 64);
+	  
       int j;
       for(j = 0; j<15;j++)
       {
         set_block_bit(ptr->data_blocks[j],0);
         ptr->data_blocks[j] = -1;
       }
-      log_msg("Inode %d delete complete!\n\n",ptr->id);
+	  
       write_inode_to_disk(ptr->id);
       write_i_bitmap_to_disk();
       write_dt_bitmap_to_disk();
@@ -576,20 +575,19 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     log_msg("\n\nsfs_open(path\"%s\", fi=0x%08x)\n",
       path, fi);
+	  
     int i = get_inode_from_path(path);
     if(i != -1)
     {
-      log_msg("Found inode(index: %d) for file with path: %s\nlooking for file descriptor now\n", i, path);
       retstat = get_empty_fd();
-      if(retstat == -1)
-        log_msg("No available file descriptor\n");
-      else{
-        take_fd(retstat,i);
-        log_msg("Return file descriptor %d for %s\n", retstat, path);
-      }
-    }else{
+      if(retstat != -1)
+	  {
+		  take_fd(retstat,i);
+	  }
+    }
+	else
+	{
       retstat = -1;
-      log_msg("File not find: %s", path);
     }
     
     return retstat;
@@ -616,20 +614,15 @@ int sfs_release(const char *path, struct fuse_file_info *fi)
     path, fi);
 
     int i = get_inode_from_path(path);
-    if(i!=-1)
+    if(i != -1)
     {
       int file_d = find_fd(i);
-      if(file_d!=-1){
-        log_msg("FD(%d) and Inode(%d) found! Start releasing the file descriptor.\n", file_d, i);
+      if(file_d != -1)
+	  {
         fd_t *f = &fd.table[file_d];
         int temp = f->inode_id;
         f->inode_id = -1;
-        log_msg("FD(%d) is released: new inode id for it is %d(old inode id %d)\n",f->id, f->inode_id,temp);
-      }else{
-        log_msg("FD not find!\n");
       }
-    }else{
-      log_msg("Inode not find!");
     }
     
 
