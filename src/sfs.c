@@ -113,15 +113,6 @@ int get_inode_from_path(const char* path)
     return -1;
 }
 
-void write_i_bitmap_to_disk()
-{
-  
-  if(block_write(1, &inodes_bm)>0)
-    log_msg("Updated inode bitmap is written to the diskfile\n");
-  else
-    log_msg("Failed to write the updated bitmap to diskfile\n");
-}
-
 int write_inode_to_disk(int index)
 {
   int rtn = -1;
@@ -493,7 +484,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       free(tmp);
        
     
-      write_i_bitmap_to_disk();
+      block_write(1, &inodes_bm);
       uint8_t *buf = malloc(BLOCK_SIZE*sizeof(uint8_t));
       if(block_read(3+((in->id)/2), buf)>-1)  //e.g. inode 0 and 1 should be in block 0+2
       {
@@ -539,7 +530,7 @@ int sfs_unlink(const char *path)
       }
 	  
       write_inode_to_disk(ptr->id);
-      write_i_bitmap_to_disk();
+      block_write(1, &inodes_bm);
       block_write(2, &block_bm);
     }
 
@@ -873,7 +864,7 @@ int sfs_mkdir(const char *path, mode_t mode)
       set_inode_bit(tmp->id, 1);            
       write_inode_to_disk(tmp->id);
       free(tmp);
-      write_i_bitmap_to_disk();
+      block_write(1, &inodes_bm);
 
     }else{
       retstat = -EEXIST;
@@ -916,7 +907,7 @@ int sfs_rmdir(const char *path)
       }
       log_msg("Inode %d delete complete!\n\n",ptr->id);
       write_inode_to_disk(ptr->id);
-      write_i_bitmap_to_disk();
+      block_write(1, &inodes_bm);
       block_write(2, &block_bm);
     }else{
       return -ENOENT;
